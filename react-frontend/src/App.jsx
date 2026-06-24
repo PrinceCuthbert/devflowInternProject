@@ -15,19 +15,21 @@ export default function App() {
 
   const RequireAdmin = ({ children }) => {
     if (!user) return <Navigate to="/login" replace />;
-    if (user.role !== "admin") return <Navigate to="/" replace />;
+    if (user.role !== "admin") return <Navigate to="/dashboard" replace />;
     return children;
   };
 
   return (
     <Routes>
+      <Route path="/" element={<Navigate to="/login" replace />} />
+
       <Route
         path="/login"
-        element={user ? <Navigate to="/" replace /> : <Login />}
+        element={user ? <Navigate to="/dashboard" replace /> : <Login />}
       />
 
       <Route
-        path="/"
+        path="/dashboard"
         element={
           <RequireAuth>
             <Dashboard />
@@ -48,7 +50,7 @@ export default function App() {
 
       <Route
         path="*"
-        element={<Navigate to={user ? "/" : "/login"} replace />}
+        element={<Navigate to={user ? "/dashboard" : "/login"} replace />}
       />
     </Routes>
   );

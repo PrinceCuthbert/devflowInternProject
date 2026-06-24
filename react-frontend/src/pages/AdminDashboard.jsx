@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
 import { Shield, ArrowLeft, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { apiService } from "../service/apiService";
+import { useEffect, useState } from "react";
 
 function AdminDashboard() {
   const [usersList, setUsersList] = useState([]);
@@ -15,9 +15,7 @@ function AdminDashboard() {
         const data = await apiService.getUsers();
         setUsersList(data);
       } catch (err) {
-        setError(
-          "Access Denied. You do not have permission to view this data.",
-        );
+        setError("Access Denied.", err);
       } finally {
         setLoading(false);
       }
@@ -44,7 +42,7 @@ function AdminDashboard() {
             </div>
           </div>
           <button
-            onClick={() => navigate("/")}
+            onClick={() => navigate("/dashboard")}
             className="flex items-center gap-2 text-sm font-bold text-gray-400 hover:text-[#293681] transition-colors bg-gray-50 hover:bg-[#E8ECFF] px-4 py-2 rounded-lg">
             <ArrowLeft className="w-4 h-4" /> Back to Projects
           </button>
