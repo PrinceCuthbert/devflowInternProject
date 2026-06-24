@@ -1,24 +1,55 @@
-import React, { useState } from 'react';
-import Dashboard from './pages/Dashboard';
-import Login from './pages/Login';
-import AdminDashboard from './pages/AdminDashboard';
-import { useAuth } from './auth/AuthProvider';
+import React from "react";
+import { Navigate, Route, Routes } from "react-router-dom";
+import Dashboard from "./pages/Dashboard";
+import Login from "./pages/Login";
+import AdminDashboard from "./pages/AdminDashboard";
+import { useAuth } from "./auth/AuthProvider";
 
 export default function App() {
-    const { user } = useAuth();
-    // New state to track which page we are looking at
-    const [currentView, setCurrentView] = useState('dashboard');
+  const { user } = useAuth();
 
-    // Not logged in? Show Login.
-    if (!user) {
-        return <Login />;
-    }
+  const RequireAuth = ({ children }) => {
+    if (!user) return <Navigate to="/login" replace />;
+    return children;
+  };
 
-    // Logged in AND requested the admin panel AND is actually an admin? Show Admin!
-    if (currentView === 'admin' && user.role === 'admin') {
-        return <AdminDashboard onBack={() => setCurrentView('dashboard')} />;
-    }
+  const RequireAdmin = ({ children }) => {
+    if (!user) return <Navigate to="/login" replace />;
+    if (user.role !== "admin") return <Navigate to="/" replace />;
+    return children;
+  };
 
-    // Otherwise, show the default Dashboard!
-    return <Dashboard onNavigateAdmin={() => setCurrentView('admin')} />;
+  return (
+    <Routes>
+      <Route
+        path="/login"
+        element={user ? <Navigate to="/" replace /> : <Login />}
+      />
+
+      <Route
+        path="/"
+        element={
+          <RequireAuth>
+            <Dashboard />
+          </RequireAuth>
+        }
+      />
+
+      <Route path="/admin" element={<Navigate to="/admin/users" replace />} />
+
+      <Route
+        path="/admin/users"
+        element={
+          <RequireAdmin>
+            <AdminDashboard />
+          </RequireAdmin>
+        }
+      />
+
+      <Route
+        path="*"
+        element={<Navigate to={user ? "/" : "/login"} replace />}
+      />
+    </Routes>
+  );
 }

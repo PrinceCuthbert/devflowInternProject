@@ -1,117 +1,157 @@
-import { useState, useEffect, useCallback } from 'react';
-import { apiService } from '../service/apiService';
-import { useAuth } from '../auth/AuthProvider';
-import { io } from 'socket.io-client';
+import { useState, useEffect } from "react";
+import { useAuth } from "../auth/AuthProvider";
+import { io } from "socket.io-client";
+
+// 🛒 Import Apollo Client hooks and your fresh query manifest
+import { useQuery, useMutation } from "@apollo/client/react";
+import {
+  GET_MY_PROJECTS,
+  CREATE_PROJECT,
+  UPDATE_PROJECT,
+  DELETE_PROJECT,
+} from "../service/graphqlQueries.js";
 
 function useTodos() {
-    const [tasks, setTasks] = useState([]);
-    const [editingId, setEditingId] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const { user } = useAuth();
+  const [tasks, setTasks] = useState([]);
+  const [editingId, setEditingId] = useState(null);
+  const [socketError, setSocketError] = useState(null);
+  const { user } = useAuth();
 
-    const loadTasks = useCallback(async () => {
-        setLoading(true);
-        try {
-            const data = await apiService.getAll();
-            setTasks(data);
-        } catch (error) {
-            console.error("Error fetching tasks:", error);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
+  // 📡 A. Run declarative query (Automatically executes if user is authenticated)
+  //   const { loading } = useQuery(GET_MY_PROJECTS, {
+  //     skip: !user, // Security flag: Don't execute if user session isn't loaded yet
+  //     onCompleted: (data) => {
+  //       setTasks(data.myProjects); // Sync GraphQL cache directly into your UI list state
+  //     },
+  //     onError: (error) => {
+  //       console.error("GraphQL Query Fetch Error:", error);
+  //     },
+  //   });
 
-    useEffect(() => {
-        if (user) {
-            loadTasks();
-        }
-    }, [user, loadTasks]);
+  // 📡 A. Run declarative query reactively
+  const { loading, data, error } = useQuery(GET_MY_PROJECTS, {
+    skip: !user,
+    fetchPolicy: "cache-and-network", // Ensures local cache returns instantly, then hits backend
+  });
 
-    // 🔌 REAL-TIME EVENT PIPELINE EFFECT
-    useEffect(() => {
-        if (!user) return;
+  // 🔄 Synchronize Apollo cache updates directly into local rendering state
+  useEffect(() => {
+    if (data?.myProjects) {
+      setTasks(data.myProjects);
+    }
+  }, [data]);
 
-        const socket = io('http://localhost:5000');
+  // 🏗️ B. Bind structural mutation write channels
+  const [executeCreate] = useMutation(CREATE_PROJECT);
+  const [executeUpdate] = useMutation(UPDATE_PROJECT);
+  const [executeDelete] = useMutation(DELETE_PROJECT);
 
-        socket.on('connect', () => {
-            console.log("⚡ Connected to WebSocket Server! ID:", socket.id);
+  // 🔌 REAL-TIME WEBSOCKET PIPELINE EFFECT (Kept fully operational!)
+  useEffect(() => {
+    if (!user) return;
+
+    const socket = io("http://localhost:5000");
+
+    socket.on("connect", () => {
+      setSocketError(null);
+      console.log("⚡ Connected to WebSocket Server! ID:", socket.id);
+    });
+
+    socket.on("connect_error", () => {
+      setSocketError(
+        "Backend connection failed. Start your server and refresh.",
+      );
+    });
+
+    socket.on("project_created", (newProject) => {
+      if (newProject.userId == user.id) {
+        setTasks((prevTasks) => {
+          const filtered = prevTasks.filter((t) => t.id != newProject.id);
+          return [...filtered, newProject];
         });
+      }
+    });
 
-        // Listener A: Task Created
-        socket.on('project_created', (newProject) => {
-            console.log("📡 Broadcast Received: project_created", newProject);
-            // Loose comparison (==) handles string vs integer differences safely
-            if (newProject.userId == user.id) {
-                setTasks((prevTasks) => {
-                    // Cleanly filter out any potential duplicate by ID to be safe
-                    const filtered = prevTasks.filter(t => t.id != newProject.id);
-                    // Return a brand new array reference to force React to update the DOM
-                    return [...filtered, newProject];
-                });
-            }
-        });
+    socket.on("project_updated", (updatedProject) => {
+      if (updatedProject.userId == user.id) {
+        setTasks((prevTasks) =>
+          prevTasks.map((t) =>
+            t.id == updatedProject.id ? updatedProject : t,
+          ),
+        );
+      }
+    });
 
-        // Listener B: Task Updated
-        socket.on('project_updated', (updatedProject) => {
-            console.log("📡 Broadcast Received: project_updated", updatedProject);
-            if (updatedProject.userId == user.id) {
-                setTasks((prevTasks) =>
-                    prevTasks.map((t) => (t.id == updatedProject.id ? updatedProject : t))
-                );
-            }
-        });
+    socket.on("project_deleted", ({ id, userId }) => {
+      if (userId == user.id) {
+        setTasks((prevTasks) => prevTasks.filter((t) => t.id != id));
+      }
+    });
 
-        // Listener C: Task Deleted
-        socket.on('project_deleted', ({ id, userId }) => {
-            console.log("📡 Broadcast Received: project_deleted. ID:", id);
-            if (userId == user.id) {
-                setTasks((prevTasks) => prevTasks.filter((t) => t.id != id));
-            }
-        });
-
-        return () => {
-            socket.disconnect();
-        };
-    }, [user]);
-
-    const saveTask = async (name) => {
-        if (editingId) {
-            // 1. Find the current task to make sure we don't drop its status row
-            const currentTask = tasks.find(t => t.id == editingId);
-            const currentStatus = currentTask ? currentTask.status : 'pending';
-
-            // Pass all 3 parameters down safely!
-            await apiService.update(editingId, name, currentStatus);
-            setEditingId(null);
-        } else {
-            await apiService.create(name);
-        }
-        // No loadTasks() needed! Sockets manage the array updates.
+    return () => {
+      socket.disconnect();
     };
+  }, [user]);
 
-    const removeTask = async (id) => {
-        await apiService.delete(id);
-        if (editingId === id) setEditingId(null);
-    };
+  // 💾 SAVE / EDIT TASK ACTION
+  const saveTask = async (name) => {
+    if (!name.trim()) return;
 
-    const toggleTaskStatus = async (task) => {
-        try {
-            // 2. Make absolutely sure nextStatus can NEVER fall back to a blank string
-            const nextStatus = task.status === 'completed' ? 'pending' : 'completed';
+    try {
+      if (editingId) {
+        const currentTask = tasks.find((t) => t.id == editingId);
+        const currentStatus = currentTask ? currentTask.status : "pending";
 
-            // 🛑 ADD THIS TEMP LOG LINE:
-            console.log("✈️ Sending to Axios -> ID:", task.id, "Name:", task.name, "Status:", nextStatus);
+        // Dispatch mutation passing clean typed operational variables
+        await executeUpdate({
+          variables: { id: editingId, name, status: currentStatus },
+        });
+        setEditingId(null);
+      } else {
+        await executeCreate({
+          variables: { name },
+        });
+      }
+    } catch (error) {
+      console.error("Mutation failed during save operation:", error);
+    }
+  };
 
-            // Push all parameters explicitly
-            await apiService.update(task.id, task.name, nextStatus);
-        } catch (error) {
-            console.error("Failed to toggle status:", error);
-        }
-    };
+  // 🗑️ REMOVE TASK ACTION
+  const removeTask = async (id) => {
+    try {
+      await executeDelete({
+        variables: { id },
+      });
+      if (editingId === id) setEditingId(null);
+    } catch (error) {
+      console.error("Mutation failed during delete operation:", error);
+    }
+  };
 
-// Add toggleTaskStatus to your return object at the bottom!
-    return { tasks, loading, editingId, setEditingId, saveTask, removeTask, toggleTaskStatus };
+  // ✅ TOGGLE STATUS ACTION
+  const toggleTaskStatus = async (task) => {
+    try {
+      const nextStatus = task.status === "completed" ? "pending" : "completed";
 
+      await executeUpdate({
+        variables: { id: task.id, name: task.name, status: nextStatus },
+      });
+    } catch (error) {
+      console.error("Mutation failed during toggle status operation:", error);
+    }
+  };
+
+  return {
+    tasks,
+    loading, // Controlled dynamically by useQuery's loading lifecycle flag!
+    error: error?.message || socketError,
+    editingId,
+    setEditingId,
+    saveTask,
+    removeTask,
+    toggleTaskStatus,
+  };
 }
 
 export default useTodos;
