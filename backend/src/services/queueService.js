@@ -28,17 +28,28 @@ mockRedisMemory.on("process_notification", async (job) => {
 
   try {
     if (type === "EMAIL") {
-      await transporter.sendMail({
-        from: '"Identity Security Gateway" <security@todoapp.com>',
+      // Send via the initialized transporter (Live or Mock)
+      const info = await transporter.sendMail({
+        // 🚀 Branded the sender name precisely for DevFlow!
+        from: `"DevFlow Security Gateway" <${smtpUser || "security@devflow.com"}>`,
         to,
-        subject: "Your OTP Verification Code",
-        text: body,
+        // 🚀 Branded the Subject Line
+        subject: "DevFlow - Secure OTP Verification Code",
+        // 🚀 Branded the Body Template Layout
+        text: `Hello,\n\n${body}\n\nThis security code is short-lived and valid for one login session into your workspace.\n\nBest regards,\nDevFlow Project Management Suite`,
       });
-      console.log(`✉️ Mock Email Sent with payload body: "${body}"`);
+
+      if (smtpUser && smtpPassword) {
+        console.log(
+          `✉️ [SMTP SUCCESS] Live DevFlow OTP email dispatched straight to: ${to}`,
+        );
+        console.log(`📡 Message ID response from Google: ${info.messageId}`);
+      } else {
+        console.log(`✉️ Mock Email Sent with payload body: "${body}"`);
+      }
     } else if (type === "SMS") {
-      // 📱 Free SMS Sandbox: Outputs cleanly to developer log screen
       console.log(
-        `📱 [FREE TWILIO SANDBOX] SMS outbox string routed safely to mobile ${to}: "${body}"`,
+        `📱 [FREE TWILIO SANDBOX] DevFlow SMS outbox string routed safely to mobile ${to}: "${body}"`,
       );
     }
     console.log(`✅ BullMQ: Job successfully completed.`);
