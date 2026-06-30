@@ -1,6 +1,13 @@
 import { gql } from "graphql-tag";
 
 export const typeDefs = gql`
+  type AuthResponse {
+    requiresOtp: Boolean!
+    stepToken: String # A temporary signed string tracking this authorization lifecycle
+    user: User # Null if requiresOtp is true
+    token: String # The final permanent access JWT (Null if requiresOtp is true)
+  }
+
   # 1. Define what a User looks like
   type User {
     id: ID!
@@ -30,5 +37,11 @@ export const typeDefs = gql`
     createProject(name: String!): Project
     updateProject(id: ID!, name: String, status: String): Project
     deleteProject(id: ID!): String
+    loginWithEmailPassword(
+      username: String!
+      password: String!
+      deliveryMethod: String!
+    ): AuthResponse!
+    verifyOtp(stepToken: String!, code: String!): AuthResponse!
   }
 `;

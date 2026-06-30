@@ -1,59 +1,68 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
-import axios from 'axios';
+import React, { createContext, useState, useEffect, useContext } from "react";
+import axios from "axios"; // Retained temporarily for your traditional REST signup if needed
 
-// 1. Create the Context (The Bubble)
 const AuthContext = createContext();
 
-// 2. Export the custom hook so other files can easily grab the auth data!
 export const useAuth = () => useContext(AuthContext);
 
-// 3. The Provider Component that wraps your app
 export function AuthProvider({ children }) {
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-    // When the app loads, check if we left a Keycard in localStorage
-    useEffect(() => {
-        const token = localStorage.getItem('token');
-        const id = localStorage.getItem('id');
-        const username = localStorage.getItem('username');
-        const role = localStorage.getItem('role');
+  useEffect(() => {
+    const bootstrapAuth = () => {
+      try {
+        const token = localStorage.getItem("token");
+        const id = localStorage.getItem("id");
+        const username = localStorage.getItem("username");
+        const role = localStorage.getItem("role");
 
-        if (token) {
-            setUser({id, username, role, token });
+        if (token && id && username && role) {
+          setUser({ id, username, role, token });
+        } else {
+          localStorage.clear();
         }
+      } catch (error) {
+        console.error("Session token validation failed, wiping context", error);
+        localStorage.clear();
+      } finally {
         setLoading(false);
-    }, []);
-
-    const login = async (username, password) => {
-        const response = await axios.post('http://localhost:5000/api/auth/login', { username, password });
-        const { token,id, role } = response.data;
-
-        // Save to browser memory
-        localStorage.setItem('token', token);
-        localStorage.setItem('id', id);
-        localStorage.setItem('username', username);
-        localStorage.setItem('role', role);
-
-        setUser({ id,username, role, token });
+      }
     };
+    bootstrapAuth();
+  }, []);
 
-    const register = async (username, password) => {
-        await axios.post('http://localhost:5000/api/auth/register', { username, password });
-        // Automatically log them in after they register
-        await login(username, password);
-    };
+  // 🔄 Handles saving credentials upon final validation success
+  const completeLoginSession = (authPayload) => {
+    const { token, user: userData } = authPayload;
 
-    const logout = () => {
-        localStorage.clear(); // Shred the Keycard!
-        setUser(null);
-    };
+    localStorage.setItem("token", token);
+    localStorage.setItem("id", userData.id);
+    localStorage.setItem("username", userData.username);
+    localStorage.setItem("role", userData.role);
 
-    if (loading) return null; // Don't render the app until we check localStorage
+    setUser({ ...userData, token });
+  };
 
-    return (
-        <AuthContext.Provider value={{ user, login, register, logout }}>
-            {children}
-        </AuthContext.Provider>
-    );
+  const register = async (username, password, email, phoneNumber) => {
+    // Porting signup to match your updated backend properties fields
+    await axios.post("http://localhost:5000/api/auth/register", {
+      username,
+      password,
+      email,
+      phoneNumber,
+    });
+  };
+
+  const logout = () => {
+    localStorage.clear();
+    setUser(null);
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{ user, loading, completeLoginSession, register, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }

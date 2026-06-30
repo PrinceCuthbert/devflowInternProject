@@ -42,3 +42,40 @@ export const DELETE_PROJECT = gql`
     deleteProject(id: $id)
   }
 `;
+
+export const LOGIN_WITH_EMAIL_PASSWORD = gql`
+  mutation LoginWithEmailPassword(
+    $username: String!
+    $password: String!
+    $deliveryMethod: String!
+  ) {
+    loginWithEmailPassword(
+      username: $username
+      password: $password
+      deliveryMethod: $deliveryMethod
+    ) {
+      requiresOtp
+      stepToken
+      token
+      user {
+        id
+        username
+        role
+      }
+    }
+  }
+`;
+
+export const VERIFY_OTP = gql`
+  mutation VerifyOtp($stepToken: String!, $code: String!) {
+    verifyOtp(stepToken: $stepToken, code: $code) {
+      requiresOtp
+      token
+      user {
+        id
+        username
+        role
+      }
+    }
+  }
+`;
