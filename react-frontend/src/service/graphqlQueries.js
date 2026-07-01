@@ -81,3 +81,15 @@ export const VERIFY_OTP = gql`
     }
   }
 `;
+
+export const REQUEST_PASSWORD_RESET = gql`
+  mutation RequestPasswordReset($email: String!) {
+    requestPasswordReset(email: $email)
+  }
+`;
+
+export const EXECUTE_PASSWORD_RESET = gql`
+  mutation ExecutePasswordReset($token: String!, $newPassword: String!) {
+    executePasswordReset(token: $token, newPassword: $newPassword)
+  }
+`;

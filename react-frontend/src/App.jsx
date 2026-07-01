@@ -3,6 +3,7 @@ import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import AdminDashboard from "./pages/AdminDashboard";
 import { useAuth } from "./auth/AuthProvider";
 
@@ -69,6 +70,11 @@ export default function App() {
       <Route
         path="/forgot-password"
         element={user ? <Navigate to="/dashboard" replace /> : <ForgotPassword />}
+      />
+
+      <Route
+        path="/reset-password"
+        element={user ? <Navigate to="/dashboard" replace /> : <ResetPassword />}
       />
 
 

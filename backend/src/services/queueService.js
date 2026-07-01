@@ -45,7 +45,7 @@ export const addNotificationJob = (payload) => {
 
 // ⚙️ THE CONSUMER WORKER: Processes job out of memory asynchronously
 mockRedisMemory.on("process_notification", async (job) => {
-  const { to, type, body } = job;
+  const { to, type, body, subject, text } = job;
   console.log(`⚙️ BullMQ Worker: Popping task off. Mode: [${type}] ➔ To: ${to}`);
 
   try {
@@ -54,8 +54,8 @@ mockRedisMemory.on("process_notification", async (job) => {
       const info = await transporter.sendMail({
         from: `"DevFlow System's Authentication." <${smtpUser || 'security@todoapp.com'}>`,
         to,
-        subject: "Your OTP Verification Code",
-        text: `Hello,\n\n${body}\n\nThis code is valid for one login attempt.\n\nDevFlow Security Team.`,
+        subject: subject || "Your OTP Verification Code",
+        text: text || `Hello,\n\n${body}\n\nThis code is valid for one login attempt.\n\nDevFlow Security Team.`,
       });
 
       if (smtpUser && smtpPassword) {

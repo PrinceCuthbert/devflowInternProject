@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import { Project } from "../models/Project.js";
 import { User } from "../models/User.js";
 import { Otp } from "../models/Otp.js";
@@ -253,6 +254,68 @@ export const resolvers = {
       io.emit("project_deleted", { id: parseInt(id), userId: context.user.id });
 
       return `Project successfully removed from the database.`;
+    },
+
+    requestPasswordReset: async (_, { email }) => {
+      const user = await User.findOne({ where: { email } });
+      
+      if (!user) {
+        return "If an account exists with this email, a reset link has been sent.";
+      }
+
+      const token = crypto.randomBytes(32).toString("hex");
+      const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+      user.resetPasswordToken = hashedToken;
+      user.resetPasswordExpires = expiresAt;
+      await user.save();
+
+      const resetLink = `http://localhost:5173/reset-password?token=${token}`;
+
+      addNotificationJob({
+        to: user.email,
+        type: "EMAIL",
+        subject: "Password Reset Request",
+        text: `Hello ${user.username},\n\nYou requested a password reset for your DevFlow account.\n\nPlease click on the following link or paste it into your browser to reset your password:\n\n${resetLink}\n\nThis link is valid for 15 minutes.\n\nIf you did not request this, please ignore this email.\n\nDevFlow Security Team.`
+      });
+
+      return "If an account exists with this email, a reset link has been sent.";
+    },
+
+    executePasswordReset: async (_, { token, newPassword }) => {
+      if (!token) throw new Error("Token is required.");
+      if (!newPassword || newPassword.length < 6) {
+        throw new Error("Password must be at least 6 characters long.");
+      }
+
+      const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+      const user = await User.findOne({
+        where: {
+          resetPasswordToken: hashedToken,
+        }
+      });
+
+      if (!user) {
+        throw new Error("Invalid or expired password reset token.");
+      }
+
+      if (new Date() > new Date(user.resetPasswordExpires)) {
+        user.resetPasswordToken = null;
+        user.resetPasswordExpires = null;
+        await user.save();
+        throw new Error("Password reset token has expired.");
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      user.password = hashedPassword;
+      user.resetPasswordToken = null;
+      user.resetPasswordExpires = null;
+      await user.save();
+
+      return "Password successfully reset.";
     },
   },
 };

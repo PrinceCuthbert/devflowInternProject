@@ -1,21 +1,27 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useMutation } from "@apollo/client/react";
+import { REQUEST_PASSWORD_RESET } from "../service/graphqlQueries";
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
   const font = "Inter, system-ui, sans-serif";
   const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
 
-  const handleResetRequest = (e) => {
+  const [requestPasswordReset, { loading }] = useMutation(REQUEST_PASSWORD_RESET);
+
+  const handleResetRequest = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    // Simulated pipeline hook block placeholder
-    setTimeout(() => {
-      setMessage("A recovery verification token link was issued.");
-      setLoading(false);
-    }, 1200);
+    setMessage("");
+    setError("");
+    try {
+      const { data } = await requestPasswordReset({ variables: { email } });
+      setMessage(data?.requestPasswordReset || "If an account exists with this email, a reset link has been sent.");
+    } catch (err) {
+      setError(err.message || "Something went wrong. Please try again.");
+    }
   };
 
   return (
@@ -83,6 +89,17 @@ const ForgotPassword = () => {
             marginBottom: "20px", textAlign: "center", fontFamily: font,
           }}>
             {message}
+          </div>
+        )}
+
+        {/* Error message */}
+        {error && (
+          <div style={{
+            background: "#FEF2F2", color: "#DC2626", border: "1px solid #FECACA",
+            padding: "12px 16px", borderRadius: "10px", fontSize: "13px", fontWeight: 500,
+            marginBottom: "20px", textAlign: "center", fontFamily: font,
+          }}>
+            {error}
           </div>
         )}
 

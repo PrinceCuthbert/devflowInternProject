@@ -44,5 +44,7 @@ export const typeDefs = gql`
       mfaDestination: String
     ): AuthResponse!
     verifyOtp(stepToken: String!, code: String!): AuthResponse!
+    requestPasswordReset(email: String!): String!
+    executePasswordReset(token: String!, newPassword: String!): String!
   }
 `;
