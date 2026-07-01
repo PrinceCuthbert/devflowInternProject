@@ -2,27 +2,64 @@ import React from "react";
 
 function TaskInput({ inputValue, setInputValue, onSubmit, isEditing }) {
   return (
-    <form onSubmit={onSubmit} className="flex gap-3 mb-6">
-      <div className="flex-1 relative flex items-center bg-white border border-slate-200 rounded-xl shadow-sm focus-within:border-blue-500 focus-within:ring-3 focus-within:ring-blue-100 transition-all">
-        <svg className="absolute left-4 w-4 h-4 text-slate-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-        </svg>
+    <form onSubmit={onSubmit} style={{ display: "flex", gap: "12px", marginBottom: "24px" }}>
+      {/* Input wrapper */}
+      <div style={{ flex: 1, position: "relative", display: "flex", alignItems: "center" }}>
+        <span style={{
+          position: "absolute",
+          left: "16px",
+          display: "flex",
+          alignItems: "center",
+          color: "#9CA3AF",
+          pointerEvents: "none",
+        }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </span>
         <input
           type="text"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           placeholder={isEditing ? "Edit task name..." : "Add a new project task..."}
-          className="w-full bg-transparent py-3.5 pl-11 pr-4 outline-none text-slate-800 text-sm placeholder-slate-400 font-medium"
+          className="input-field"
+          style={{ paddingLeft: "44px" }}
         />
       </div>
+
+      {/* Submit button */}
       <button
         type="submit"
-        className={`px-5 rounded-xl font-bold text-sm transition-all duration-200 shadow-sm whitespace-nowrap ${
-          isEditing
-            ? "bg-amber-500 hover:bg-amber-600 text-white shadow-amber-200"
-            : "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200"
-        }`}>
-        {isEditing ? "Update" : "Add Task"}
+        style={{
+          height: "48px",
+          paddingLeft: "20px",
+          paddingRight: "20px",
+          borderRadius: "12px",
+          fontFamily: "Inter, sans-serif",
+          fontSize: "14px",
+          fontWeight: 600,
+          color: "#ffffff",
+          border: "none",
+          cursor: "pointer",
+          whiteSpace: "nowrap",
+          transition: "background 180ms ease, box-shadow 180ms ease, transform 150ms ease",
+          background: isEditing ? "#D97706" : "#16A34A",
+        }}
+        onMouseEnter={e => {
+          e.currentTarget.style.background = isEditing ? "#B45309" : "#15803D";
+          e.currentTarget.style.transform = "translateY(-1px)";
+          e.currentTarget.style.boxShadow = isEditing
+            ? "0 2px 8px rgba(217,119,6,0.25)"
+            : "0 2px 8px rgba(22,163,74,0.25)";
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.background = isEditing ? "#D97706" : "#16A34A";
+          e.currentTarget.style.transform = "translateY(0)";
+          e.currentTarget.style.boxShadow = "none";
+        }}
+      >
+        {isEditing ? "Update Task" : "Add Task"}
       </button>
     </form>
   );

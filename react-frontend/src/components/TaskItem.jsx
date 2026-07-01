@@ -2,6 +2,8 @@ import React, { useState } from "react";
 
 function TaskItem({ task, isEditing, onEdit, onToggle }) {
   const [isDragging, setIsDragging] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [editHovered, setEditHovered] = useState(false);
   const isCompleted = task.status === "completed";
 
   return (
@@ -12,40 +14,97 @@ function TaskItem({ task, isEditing, onEdit, onToggle }) {
         setTimeout(() => setIsDragging(true), 0);
       }}
       onDragEnd={() => setIsDragging(false)}
-      className={`flex justify-between items-center p-4 mb-2.5 bg-white border rounded-2xl cursor-grab transition-all duration-200
-        ${isDragging ? "opacity-40 scale-95 shadow-lg border-slate-200" : "opacity-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 border-slate-100"}
-        ${isEditing ? "ring-2 ring-blue-500 border-transparent" : ""}
-        ${isCompleted ? "bg-slate-50/70" : ""}`}>
-
-      <div className="flex items-center gap-3 min-w-0">
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        padding: "14px 16px",
+        marginBottom: "8px",
+        background: isCompleted ? "#FAFAFA" : "#FFFFFF",
+        border: isEditing ? "2px solid #16A34A" : "1px solid #E5E7EB",
+        borderRadius: "12px",
+        cursor: "grab",
+        transition: "box-shadow 180ms ease, transform 180ms ease, opacity 180ms ease",
+        boxShadow: isDragging
+          ? "0 8px 24px rgba(0,0,0,0.12)"
+          : isHovered
+          ? "0 4px 12px rgba(0,0,0,0.08)"
+          : "0 1px 4px rgba(0,0,0,0.04)",
+        transform: isDragging ? "scale(0.97)" : isHovered ? "translateY(-1px)" : "translateY(0)",
+        opacity: isDragging ? 0.5 : 1,
+        userSelect: "none",
+        animation: "fadeSlideUp 200ms ease both",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0 }}>
+        {/* Checkbox toggle */}
         <button
           onClick={() => onToggle(task)}
-          className="shrink-0 focus:outline-none group">
+          style={{ flexShrink: 0, background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center" }}
+        >
           {isCompleted ? (
-            <span className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center shadow shadow-blue-200">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+            <span style={{
+              width: "20px", height: "20px", borderRadius: "50%",
+              background: "#16A34A",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              flexShrink: 0,
+              boxShadow: "0 1px 4px rgba(22,163,74,0.25)",
+            }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="20 6 9 17 4 12"/>
               </svg>
             </span>
           ) : (
-            <span className="w-5 h-5 rounded-full border-2 border-slate-300 group-hover:border-blue-500 transition-colors block" />
+            <span style={{
+              width: "20px", height: "20px", borderRadius: "50%",
+              border: "2px solid #D1D5DB",
+              display: "block", flexShrink: 0,
+              transition: "border-color 150ms ease",
+            }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = "#16A34A"}
+            onMouseLeave={e => e.currentTarget.style.borderColor = "#D1D5DB"}
+            />
           )}
         </button>
 
-        <span className={`text-sm font-semibold transition-all duration-200 truncate
-          ${isCompleted ? "text-slate-400 line-through" : "text-slate-800"}`}>
+        {/* Task name */}
+        <span style={{
+          fontSize: "14px",
+          fontWeight: 500,
+          fontFamily: "Inter, sans-serif",
+          color: isCompleted ? "#9CA3AF" : "#374151",
+          textDecoration: isCompleted ? "line-through" : "none",
+          transition: "color 180ms ease",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}>
           {task.name}
         </span>
       </div>
 
+      {/* Edit button */}
       <button
         onClick={() => onEdit(task)}
-        className={`shrink-0 ml-3 p-2 rounded-lg transition-all ${
-          isEditing
-            ? "text-blue-600 bg-blue-50"
-            : "text-slate-400 hover:text-blue-600 hover:bg-blue-50"
-        }`}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        onMouseEnter={() => setEditHovered(true)}
+        onMouseLeave={() => setEditHovered(false)}
+        style={{
+          flexShrink: 0,
+          marginLeft: "12px",
+          padding: "6px",
+          borderRadius: "8px",
+          border: "none",
+          background: isEditing || editHovered ? "#F0FDF4" : "transparent",
+          color: isEditing ? "#16A34A" : editHovered ? "#16A34A" : "#9CA3AF",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          transition: "background 150ms ease, color 150ms ease",
+        }}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
           <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
         </svg>

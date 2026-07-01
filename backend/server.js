@@ -21,13 +21,31 @@ import userRoutes from "./src/routes/userRoutes.js";
 
 dotenv.config();
 
+const allowedOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(",").map((origin) => origin.trim())
+  : ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175"];
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow non-browser clients (no origin) and configured frontend origins.
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+    callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true,
+};
+
 const app = express();
 const server = http.createServer(app);
 
 export const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: allowedOrigins,
     methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
   },
 });
 
@@ -38,7 +56,7 @@ io.on("connection", (socket) => {
   });
 });
 
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // 🗄️ Legacy REST Endpoints kept perfectly intact for record/reference

@@ -8,6 +8,9 @@ import { addNotificationJob } from "../services/queueService.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "super_secret_keycard_auth";
 
+const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+const isValidPhone = (value) => /^\+?[0-9]{8,15}$/.test(value);
+
 const normalizeProject = (projectRecord) => {
   const project =
     typeof projectRecord?.get === "function"
@@ -71,7 +74,7 @@ export const resolvers = {
     // 🔐 TWO-STEP AUTHENTICATION: STEP 1 (Verify Password & Dispatch OTP Job)
     loginWithEmailPassword: async (
       _,
-      { username, password, deliveryMethod },
+      { username, password, deliveryMethod, mfaDestination },
     ) => {
       // 1. Verify user profile exists
       const user = await User.findOne({ where: { username } });
@@ -95,9 +98,29 @@ export const resolvers = {
         expiresAt: expirationTime,
       });
 
-      // 5. Select routing endpoint safely based on selection
-      const destination =
+      // 5. Select routing endpoint safely based on selection.
+      // Optional user-entered destination overrides stored profile destination.
+      const fallbackDestination =
         deliveryMethod === "SMS" ? user.phoneNumber : user.email;
+      const providedDestination = (mfaDestination || "").trim();
+      const destination = providedDestination || fallbackDestination;
+
+      if (!destination) {
+        throw new Error(
+          `No ${deliveryMethod === "SMS" ? "phone number" : "email"} available for MFA delivery.`,
+        );
+      }
+
+      if (deliveryMethod === "EMAIL" && !isValidEmail(destination)) {
+        throw new Error("Please provide a valid email address for MFA.");
+      }
+
+      if (deliveryMethod === "SMS") {
+        const normalizedPhone = destination.replace(/[\s()-]/g, "");
+        if (!isValidPhone(normalizedPhone)) {
+          throw new Error("Please provide a valid mobile number for MFA.");
+        }
+      }
 
       // 6. Push transactional communication job to BullMQ memory simulation
       addNotificationJob({

@@ -41,6 +41,7 @@ export const typeDefs = gql`
       username: String!
       password: String!
       deliveryMethod: String!
+      mfaDestination: String
     ): AuthResponse!
     verifyOtp(stepToken: String!, code: String!): AuthResponse!
   }

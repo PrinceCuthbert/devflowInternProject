@@ -48,11 +48,13 @@ export const LOGIN_WITH_EMAIL_PASSWORD = gql`
     $username: String!
     $password: String!
     $deliveryMethod: String!
+    $mfaDestination: String
   ) {
     loginWithEmailPassword(
       username: $username
       password: $password
       deliveryMethod: $deliveryMethod
+      mfaDestination: $mfaDestination
     ) {
       requiresOtp
       stepToken

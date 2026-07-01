@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import ForgotPassword from "./pages/ForgotPassword";
 import AdminDashboard from "./pages/AdminDashboard";
 import { useAuth } from "./auth/AuthProvider";
 
@@ -23,9 +24,10 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center gap-3">
+      <div className="min-h-screen flex items-center justify-center gap-3" style={{background:'#F9FAFB', fontFamily:'Inter, sans-serif'}}>
         <svg
-          className="animate-spin w-5 h-5 text-blue-600"
+          className="animate-spin w-5 h-5"
+          style={{color:'#16A34A'}}
           fill="none"
           viewBox="0 0 24 24">
           <circle
@@ -42,12 +44,13 @@ export default function App() {
             d="M4 12a8 8 0 018-8v8z"
           />
         </svg>
-        <span className="text-slate-400 text-sm font-medium">
+        <span style={{color:'#6B7280', fontSize:'14px', fontWeight:500}}>
           Loading session...
         </span>
       </div>
     );
   }
+
 
   return (
     <Routes>
@@ -62,6 +65,12 @@ export default function App() {
         path="/signup"
         element={user ? <Navigate to="/dashboard" replace /> : <Signup />}
       />
+
+      <Route
+        path="/forgot-password"
+        element={user ? <Navigate to="/dashboard" replace /> : <ForgotPassword />}
+      />
+
 
       <Route
         path="/dashboard"
