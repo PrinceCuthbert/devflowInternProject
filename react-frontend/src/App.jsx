@@ -5,6 +5,7 @@ import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import AdminDashboard from "./pages/AdminDashboard";
+import GitHubCallback from "./pages/GitHubCallback"; // NEW: Imports the handling page
 import { useAuth } from "./auth/AuthProvider";
 
 function RequireAuth({ children }) {
@@ -25,10 +26,12 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center gap-3" style={{background:'#F9FAFB', fontFamily:'Inter, sans-serif'}}>
+      <div
+        className="min-h-screen flex items-center justify-center gap-3"
+        style={{ background: "#F9FAFB", fontFamily: "Inter, sans-serif" }}>
         <svg
           className="animate-spin w-5 h-5"
-          style={{color:'#16A34A'}}
+          style={{ color: "#16A34A" }}
           fill="none"
           viewBox="0 0 24 24">
           <circle
@@ -45,39 +48,40 @@ export default function App() {
             d="M4 12a8 8 0 018-8v8z"
           />
         </svg>
-        <span style={{color:'#6B7280', fontSize:'14px', fontWeight:500}}>
+        <span style={{ color: "#6B7280", fontSize: "14px", fontWeight: 500 }}>
           Loading session...
         </span>
       </div>
     );
   }
 
-
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/login" replace />} />
-
       <Route
         path="/login"
         element={user ? <Navigate to="/dashboard" replace /> : <Login />}
       />
-
       <Route
         path="/signup"
         element={user ? <Navigate to="/dashboard" replace /> : <Signup />}
       />
 
+      {/* NEW: Captured listener mapping directly back to your GitHub App URI setup */}
+      <Route path="/oauth/github/callback" element={<GitHubCallback />} />
+
       <Route
         path="/forgot-password"
-        element={user ? <Navigate to="/dashboard" replace /> : <ForgotPassword />}
+        element={
+          user ? <Navigate to="/dashboard" replace /> : <ForgotPassword />
+        }
       />
-
       <Route
         path="/reset-password"
-        element={user ? <Navigate to="/dashboard" replace /> : <ResetPassword />}
+        element={
+          user ? <Navigate to="/dashboard" replace /> : <ResetPassword />
+        }
       />
-
-
       <Route
         path="/dashboard"
         element={
@@ -86,9 +90,7 @@ export default function App() {
           </RequireAuth>
         }
       />
-
       <Route path="/admin" element={<Navigate to="/admin/users" replace />} />
-
       <Route
         path="/admin/users"
         element={
@@ -97,7 +99,6 @@ export default function App() {
           </RequireAdmin>
         }
       />
-
       <Route
         path="*"
         element={<Navigate to={user ? "/dashboard" : "/login"} replace />}
