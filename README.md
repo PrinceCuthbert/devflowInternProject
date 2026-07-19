@@ -1,211 +1,174 @@
-# DevFlow Workspace — Enterprise Full-Stack Capstone
+# DevFlow Core Engine Architecture & Setup Guide
 
-An enterprise-grade project tracking and team collaboration workspace featuring a real-time synchronized task dashboard, robust Multi-Factor Authentication (MFA), and a cryptographically secure transactional recovery system.
-
-This project was built following a strict "Mastery-First" dual-track strategy. The full-stack data pipeline, database models, and layout patterns were first validated on a simplified sandbox application (QuickTask). Once the baseline architectural flow was mastered, development skipped static Vanilla JS rendering entirely to implement DevFlow directly using modern, component-driven framework architectures.
+Welcome to the DevFlow Core Engine workspace. This repository features a high-performance, full-stack workflow application designed with a detached multi-tier architecture. It supports native HTML5 drag-and-drop operations, dual-lock JWT authentication, Role-Based Access Control (RBAC), persistent relational mapping via MySQL, a real-time event pipeline over WebSockets, and a consolidated GraphQL API gateway running side-by-side with a legacy REST engine.
 
 ---
 
-## 🏗️ System Architecture
+## 📦 Master Dependency Manifest
 
-The ecosystem relies on an event-driven notification engine and a multi-stage GraphQL gateway overlay to ensure absolute process isolation and transactional security:
+### 🚀 Backend Server Core Components (`/backend`)
 
-- **Frontend Client**: Built using React (Vite), Tailwind CSS, and shadcn/ui components. Manages real-time UI state hooks and isolates authenticated context flows.
-- **API Gateway**: Powered by Node.js, Express, and Apollo Server. Serves as a single entry point for all application queries and mutations.
-- **Real-Time Sync Engine**: Utilizes Socket.io to handle bidirectional data synchronization across active user sessions simultaneously.
-- **Persistent Storage**: Uses a MySQL database managed natively through the Sequelize ORM framework.
-- **Asynchronous Background Worker**: A local simulated messaging queue engine built using an in-memory EventEmitter abstraction layer to offload high-latency communication tasks from the primary API thread.
+| Package | Purpose / Reason for Installation |
+| :--- | :--- |
+| `express` | The foundational minimalist web framework used to handle routing, HTTP requests, and middleware processing. |
+| `mysql2` | High-performance MySQL client driver allowing Node.js to communicate efficiently with our database instance. |
+| `sequelize` | An enterprise-grade Promise-based ORM used to map JS objects directly into MySQL tables, handling schemas and relationships (`1:M`). |
+| `dotenv` | Zero-dependency module that loads system configurations and secure credentials from a hidden `.env` file into `process.env`. |
+| `cors` | Security middleware enabling cross-origin resource sharing so our Vite development server can securely query our Express ports. |
+| `bcrypt` | A cryptographically secure hashing function used to salt and permanently secure user passwords before storing them in the DB. |
+| `jsonwebtoken` | Token-based session management system used to mint cryptographically signed keycards (JWTs) for stateful client validation. |
+| `socket.io` | Real-time bi-directional event engine used to push database updates (creates, deletes, status toggles) instantaneously to connected clients. |
+| `@apollo/server` | The core production-ready GraphQL server execution engine used to parse incoming schema queries and batch multi-resource requests. |
+| `graphql` | The foundational specification language engine required behind the scenes by Apollo to compute typed data queries. |
 
-### Architecture Flow
+### ⚛️ Frontend UI Applications (`/react-frontend`)
 
-```mermaid
-graph TD
-    subgraph Frontend [React Client]
-        A[Login Page / OTP Modal]
-        B[ForgotPassword Page]
-        C[ResetPassword Page]
-      style Frontend fill:#f0fdf4,stroke:#16a34a,stroke-width:2px
-    end
-
-    subgraph API_Gateway [Node / GraphQL Engine]
-        D[Apollo Server Gateway]
-        E[Resolvers: resolvers.js]
-        F[JWT Sign & Verify Engine]
-      style API_Gateway fill:#f0fdf9,stroke:#0d9488,stroke-width:2px
-    end
-
-    subgraph Job_Queue [BullMQ-Style Simulated Queue]
-        G[EventEmitter Queue Pool]
-        H[Nodemailer Dispatch Worker]
-      style Job_Queue fill:#fffbeb,stroke:#d97706,stroke-width:2px
-    end
-
-    subgraph Data [MySQL / Sequelize Database]
-        I[User Table]
-        J[Otp Table]
-      style Data fill:#fdf2f8,stroke:#db2777,stroke-width:2px
-    end
-
-    A -- "GraphQL Query/Mutation" --> D
-    B -- "GraphQL Query/Mutation" --> D
-    C -- "GraphQL Query/Mutation" --> D
-    D --> E
-    E --> F
-    E -- "Sequelize ORM Query" --> Data
-    E -- "addNotificationJob(payload)" --> Job_Queue
-    H -- "Send email / Log mock" --> G
-```
+| Package | Purpose / Reason for Installation |
+| :--- | :--- |
+| `axios` | Promise-based HTTP client used to fetch rest routes, modified to intercept local headers and automatically attach Bearer keys. |
+| `lucide-react` | A clean, ultra-lightweight icon pack providing visual interfaces for system checkmarks, editing pencils, and trash buckets. |
+| `socket.io-client` | The client-side WebSocket library that hooks into the server pipeline, updating global React states dynamically upon data broadcasts. |
+| `@apollo/client` *(Upcoming)* | *To be installed:* The comprehensive state management library used to bind GraphQL schemas directly into reactive UI components. |
 
 ---
 
-## 🔒 Advanced Engineering Features Implemented
+## 🛠️ New PC Environment Setup Instructions
 
-### I. Multi-Factor Authentication (MFA) via Two-Step OTP
-Designed to eliminate session-hijacking liabilities inherent to standard stateless authentication schemas.
+Follow these exact steps to restore, sync, and ignite the development infrastructure on your new machine.
 
-* **Context Interception**: Upon parsing a valid email and password combo, the `loginWithEmailPassword` mutation halts token generation. It randomly computes a secure 6-digit numeric OTP, hashes it via bcrypt, and registers it to an active Otp database record with a 5-minute Time-To-Live (TTL).
-* **State Protection via stepToken**: The server signs and yields a highly restricted intermediate `stepToken` containing the encrypted payload string `{ type: "MFA_STAGE" }`.
-* **Dropdown UI Modal**: The React application intercepts the response, holds the global session unauthenticated, and triggers a top-down sliding dropdown modal utilizing a shadcn/ui `InputOTP` primitive.
-* **Atomic Verification**: The client fires the `verifyOtp` mutation sending the passcode alongside the `stepToken`. The gateway verifies the signature integrity, checks the input via `bcrypt.compare`, flushes the row to prevent replay attacks, and signs the permanent 24-hour access JWT payload.
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User as React Browser Client
-    participant Backend as Apollo Server (Node/Express)
-    participant Queue as queueService (Nodemailer)
-    participant DB as MySQL Database
-
-    User->>Backend: loginWithEmailPassword(username, password, deliveryMethod, destination)
-    Backend->>DB: User.findOne(username)
-    DB-->>Backend: Return user hash
-    Backend->>Backend: Validate password (bcrypt)
-    Backend->>Backend: Generate random 6-digit numeric OTP
-    Backend->>DB: Create Otp (hashed OTP, expires in 5m)
-    Backend->>Queue: addNotificationJob(OTP message payload)
-    Backend->>Backend: Sign short-lived stepToken (expires in 5m)
-    Backend-->>User: Return { requiresOtp: true, stepToken }
-    
-    Note over User, Backend: Frontend displays OTP dialog input
-    
-    User->>Backend: verifyOtp(stepToken, code)
-    Backend->>Backend: Verify stepToken validity
-    Backend->>DB: Retrieve active OTP records for userId
-    Backend->>Backend: Compare inputs (bcrypt.compare)
-    Backend->>DB: Destroy all active OTPs for user
-    Backend->>Backend: Sign permanent 24h JWT token
-    Backend-->>User: Return { requiresOtp: false, token, user }
-```
-
-### II. Secure Token-Based Password Recovery Flow
-A cryptographically secure password restoration flow built to defend against account spoofing and data sniffing.
-
-* **Email Enumeration Shielding**: The `requestPasswordReset` mutation processes requests with uniform completion latency and outputs an identical string message (*"If an account exists, a reset link has been sent"*) whether the email exists or not. This blocks dictionary harvesting scripts trying to scan active platform accounts.
-* **Cryptographic Token Generation**: If an account exists, Node’s native `crypto` engine generates a secure raw 32-byte hex token string. This token is hashed using SHA-256 before database entry, rendering it useless to bad actors if a database leak occurs.
-* **Parameter Extraction**: The plain-text token string is dispatched embedded inside a recovery hyperlink. When clicked, the React application captures the token using `useSearchParams`.
-* **Atomic Commit**: The user enters a matching new password. The backend applies an SHA-256 hash to the incoming token parameter, queries the database, checks the 15-minute expiration timestamp, updates the credential via bcrypt, and resets all tracking columns to null to enforce single-use execution.
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User as React Browser Client
-    participant Backend as Apollo Server (Node/Express)
-    participant Queue as queueService (Nodemailer)
-    participant DB as MySQL Database
-
-    User->>Backend: requestPasswordReset(email)
-    Backend->>DB: User.findOne(email)
-    alt Email Not Found
-        Backend-->>User: Return generic confirmation (Email Sanitization)
-    else Email Exists
-        Backend->>Backend: Generate random 32-byte hex token
-        Backend->>Backend: Hash token with SHA-256
-        Backend->>DB: Update user (resetPasswordToken = hash, resetPasswordExpires = 15m)
-        Backend->>Queue: addNotificationJob(Reset link with raw token)
-        Backend-->>User: Return generic confirmation
-    end
-    
-    Note over User, Queue: User opens email and clicks link
-    
-    User->>Backend: executePasswordReset(token, newPassword)
-    Backend->>Backend: Hash incoming token with SHA-256
-    Backend->>DB: Find user with matching resetPasswordToken
-    alt User Found & Expires > Now
-        Backend->>Backend: Encrypt newPassword (bcrypt)
-        Backend->>DB: Update password, set token/expiry to null
-        Backend-->>User: Return success response
-    else Invalid or Expired
-        Backend-->>User: Return error (Invalid or expired token)
-    end
-```
-
-### III. Asynchronous Background Task Queue Layer
-Decouples high-latency I/O routines (such as sending emails via Nodemailer or printing terminal log blocks) to maintain rapid execution loops.
-
-Instead of letting external relays create performance bottlenecks during live mutations, the resolver pushes a structured JSON task payload to `addNotificationJob(payload)` and immediately returns a success status to the client. An isolated worker consumes the event pool asynchronously behind the scenes.
+### 📋 Prerequisites
+Ensure your machine has the following clean installations:
+1. **Node.js** (v18 or higher recommended)
+2. **MySQL Server** and **MySQL Workbench**
 
 ---
 
-## 💾 Relational Database Schema Model
+### 🗄️ Step 1: Database Initialization
+1. Open **MySQL Workbench** and connect to your local database engine.
+2. Open a new query tab and execute the following SQL command to spin up an empty structural sandbox:
+   ```sql
+   CREATE DATABASE devflow_db;
 
-The persistence layer establishes a relational hierarchy to map data dependencies and maintain cross-workspace isolation:
+ ### Step 2: Establish Backend Environment Keys
 
-```javascript
-// User Table Structure - Mapped via Sequelize ORM to MySQL
-export const User = sequelize.define("User", {
-  id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
-  username: { type: DataTypes.STRING, allowNull: false, unique: true },
-  password: { type: DataTypes.STRING, allowNull: false },
-  role: { type: DataTypes.ENUM("user", "admin"), defaultValue: "user" },
-  email: { type: DataTypes.STRING, allowNull: false },
-  phoneNumber: { type: DataTypes.STRING, allowNull: false },
-  // ─── EXTENDED PASSWORD RECOVERY SCHEMA FIELDS ───
-  resetPasswordToken: { type: DataTypes.STRING, allowNull: true },
-  resetPasswordExpires: { type: DataTypes.DATE, allowNull: true }
-});
-```
+1. Navigate into your /backend workspace folder and create a fresh file named .env. Populated it with your local PC credentials: **
 
----
 
-## 🛠️ Getting Started & Local Development
-
-### 1. Environment Configurations
-Create a `.env` configuration file in your backend root folder:
-```env
 PORT=5000
-JWT_SECRET=your_super_secret_keycard_auth
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your_email@gmail.com
-SMTP_PASSWORD=your_app_specific_password
-```
+JWT_SECRET=devflow_super_secret_key_change_me_in_production
 
-### 2. Dependency Installation
-```bash
-# Install backend requirements
+# Relational Database Mappings
+DB_NAME=devflow_db
+DB_USER=root
+DB_PASS=YOUR_MYSQL_PASSWORD_HERE
+DB_HOST=127.0.0.1
+DB_DIALECT=mysql
+
+Step 3: Install Dependencies & Launch
+Open your system terminal splits and run the following execution blocks:
+
+🖥️ Terminal A: The API & Live WebSocket Engine
+
 cd backend
 npm install
+node server.js
 
-# Install frontend requirements
-cd ../react-frontend
+
+Expected Console Verification:
+
+🔄 Database tables synced with Sequelize!
+
+🚀 REST Engine running on http://localhost:5000/api
+
+🛒 GraphQL Gateway open on http://localhost:5000/graphql
+
+🎨 Terminal B: The Client Interface Engine
+
+
+cd react-frontend
 npm install
-```
-
-### 3. Execution Commands
-```bash
-# Run backend server (from backend folder)
-npm start
-
-# Run Vite frontend client (from react-frontend folder)
 npm run dev
-```
 
----
+Expected Console Verification:
 
-## 🚀 React Compiler & Tooling
+  ➜  Local:   http://localhost:5173/
 
-### React Compiler
-The React Compiler is not enabled on this template because of its impact on dev & build performances.
+🧪 Quick System Verification Log
+Once your components initialize, perform this 3-step pipeline smoke test:
 
-### Expanding the ESLint Configuration
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the TS template for information on how to integrate TypeScript and `typescript-eslint` in your project.
+Authentication Reset: Open http://localhost:5173/, click register, and sign up as a new user.
+
+Real-Time Workspace Sync: Open an anonymous browser tab alongside your main interface under the exact same login. Add, modify, or check-off a task. Watch the opposite grid layer update with zero layout latency.
+
+The GraphQL Check: Open http://localhost:5000/graphql in your browser. Paste your signed JWT into the client request headers tab as a Bearer property, run the multi-resource batch query, and verify the structured database objects array returns cleanly.
+
+Backend Server Dependencies (/backend)
+Run these commands inside your backend/ directory:
+
+Bash
+npm install express mysql2 sequelize dotenv cors bcrypt jsonwebtoken socket.io @apollo/server graphql
+Detailed Breakdown:
+npm install express
+
+Reason: Installs the core web server framework. It handles HTTP request routing, processes incoming payloads, and serves as the foundation upon which all our APIs and middleware sit.
+
+npm install mysql2
+
+Reason: The low-level database driver. It provides the raw network connectivity and protocol wrapper needed for Node.js to talk directly to your local MySQL Server instance.
+
+npm install sequelize
+
+Reason: The Object-Relational Mapper (ORM). It abstracts raw SQL queries so we can interact with our MySQL database using clean JavaScript models and methods (like Project.findAll()), while managing relationships (1:M) between tables automatically.
+
+npm install dotenv
+
+Reason: Environment variable manager. It keeps configuration variables, database passwords, and your secret signing keys hidden away in a .env file instead of hardcoded in your source files.
+
+npm install cors
+
+Reason: Cross-Origin Resource Sharing security patch. By default, browsers block your React frontend (port 5173) from talking to your Express backend (port 5000). This package tells Express it is safe to accept requests from our Vite application.
+
+npm install bcrypt
+
+Reason: Cryptographic password hashing engine. It automatically salts and hashes strings so that passwords are saved securely in your database, preventing cleartext exposure if the database is ever compromised.
+
+npm install jsonwebtoken
+
+Reason: Token-based session authentication. It allows the server to generate a cryptographically signed identity keycard (JWT) upon successful login, which the client passes back on future requests to confirm who they are.
+
+npm install socket.io
+
+Reason: The real-time bi-directional engine. Upgrades our standard HTTP server to support persistent WebSocket pipelines, allowing the backend to instantly push updates out to clients.
+
+npm install @apollo/server
+
+Reason: The core GraphQL server engine. It parses incoming schema scripts, validates data types, handles errors, and routes instructions straight to our database resolvers.
+
+npm install graphql
+
+Reason: The foundational parsing language library required by Apollo. It handles the raw calculations and AST parsing behind the GraphQL specification itself.
+
+⚛️ Frontend UI Dependencies (/react-frontend)
+Run these commands inside your react-frontend/ directory:
+
+Bash
+npm install axios lucide-react socket.io-client @apollo/client graphql
+Detailed Breakdown:
+npm install axios
+
+Reason: The Promise-based HTTP networking client. Used to send POST, GET, PUT, and DELETE requests to our legacy REST API endpoints and pass along the Authorization header keys.
+
+npm install lucide-react
+
+Reason: The user interface icon pack. Provides lightweight SVG vector graphic files for the app components, including icons like Circle, CheckCircle2, Edit2, and TrashBucket.
+
+npm install socket.io-client
+
+Reason: The frontend WebSocket antenna. It opens a listener connection back to our backend server on port 5000 to catch any database event broadcasts and update the internal React state variables automatically.
+
+npm install @apollo/client 
+
+Reason: The comprehensive GraphQL client framework. It replaces Axios for our new pipeline, providing custom React hooks (like useQuery and useMutation) that let your UI components pull data directly from the GraphQL gateway.
+
+npm install graphql 
+Reason: The frontend query parser language library. Just like on the backend, the frontend @apollo/client needs this installed locally to process the gql query templates you write in your JavaScript files.

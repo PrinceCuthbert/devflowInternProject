@@ -14,7 +14,7 @@ import { setContext } from "@apollo/client/link/context";
 
 // 1. Point our single network wire to the GraphQL gateway endpoint
 const httpLink = createHttpLink({
-  uri: "http://localhost:5000/graphql",
+  uri: `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/graphql`,
 });
 
 // 2. Build an auth interceptor link that automatically tags your JWT token to headers

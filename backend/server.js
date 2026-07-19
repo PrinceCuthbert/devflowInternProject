@@ -119,16 +119,44 @@ app.use("/graphql", async (req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
+// const startServer = async () => {
+//   await connectDB();
+//   // await sequelize.sync({ alter: true });
+//   await sequelize.sync({ alter: false});
+//   // console.log("🔄 Database tables synced with Sequelize!");
+//   console.log("Database dropped and re-created cleanly!");
+
+//   server.listen(PORT, () => {
+//     console.log(`🚀 REST Engine running on http://localhost:${PORT}/api`);
+//     console.log(`🛒 GraphQL Gateway open on http://localhost:${PORT}/graphql`);
+//   });
+// };
+
 const startServer = async () => {
+  // 1. Connect to the base engine instance safely
   await connectDB();
-  // await sequelize.sync({ alter: true });
-  await sequelize.sync({ alter: false});
-  // console.log("🔄 Database tables synced with Sequelize!");
-  console.log("Database dropped and re-created cleanly!");
+
+  // 2. Natively force-create your specific schema if it doesn't exist yet
+  try {
+    await sequelize.query(`CREATE DATABASE IF NOT EXISTS devflow_db;`);
+    console.log("🗄️ Database 'devflow_db' verified/created successfully!");
+
+    // 3. Tell your active connection instance to swap contexts into the schema folder
+    await sequelize.query(`USE devflow_db;`);
+  } catch (dbError) {
+    console.error(
+      "⚠️ Schema verification failed, attempting sync fallback:",
+      dbError,
+    );
+  }
+
+  // 4. Run your regular Sequelize structural sync patterns
+  await sequelize.sync({ alter: false });
+  console.log("Database synced cleanly!");
 
   server.listen(PORT, () => {
-    console.log(`🚀 REST Engine running on http://localhost:${PORT}/api`);
-    console.log(`🛒 GraphQL Gateway open on http://localhost:${PORT}/graphql`);
+    console.log(`🚀 REST Engine running on port ${PORT}`);
+    console.log(`🛒 GraphQL Gateway open on port ${PORT}/graphql`);
   });
 };
 
