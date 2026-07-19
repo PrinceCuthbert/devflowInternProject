@@ -13,7 +13,7 @@ const S = {
   green50: "#F0FDF4",
   gray50: "#F9FAFB",
   gray100: "#F3F4F6",
-  gray200: "#E5E7EB",
+  gray200: "#E5E7EC",
   gray400: "#9CA3AF",
   gray500: "#6B7280",
   gray700: "#374151",
